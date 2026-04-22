@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bandcamp-library-sync"
+version = "0.1.0"
+description = "Synchronize purchased Bandcamp releases to a local library."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4>=4.12.3",
+  "playwright>=1.52.0",
+  "requests>=2.32.3",
+]
+
+[project.scripts]
+bandcamp-library-sync = "bandcamp_library_sync.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
