@@ -88,6 +88,17 @@ Sync your library as FLAC:
 bandcamp-library-sync sync --output ~/Music/bandcamp-staging
 ```
 
+If Bandcamp starts rate-limiting you, slow the client down explicitly:
+
+```bash
+bandcamp-library-sync sync \
+  --output ~/Music/bandcamp-staging \
+  --limit 1 \
+  --request-delay 5 \
+  --max-retries 8 \
+  --retry-wait 20
+```
+
 Export a simple manifest for Demlo or another downstream organizer:
 
 ```bash
@@ -100,6 +111,7 @@ Other common options:
 bandcamp-library-sync sync --output ~/Music/bandcamp-staging --format alac
 bandcamp-library-sync sync --output ~/Music/bandcamp-staging --limit 25
 bandcamp-library-sync sync --output ~/Music/bandcamp-staging --dry-run
+bandcamp-library-sync list --request-delay 3 --max-retries 8
 ```
 
 The exported manifest is written by default to:
@@ -119,4 +131,7 @@ you want a separate Demlo job to import and reorganize the downloads.
 - Download links are resolved from the web download flow and embedded page data.
 - Bandcamp can change their HTML or internal JSON shapes at any time. If that
   happens, the sync logic will need to be adjusted.
+- When archive resolution fails, the tool now saves the relevant HTML pages to
+  `~/.config/bandcamp-library-sync/debug/` so the parser can be updated against
+  the exact live response.
 - This project is intended for downloading music you already purchased.

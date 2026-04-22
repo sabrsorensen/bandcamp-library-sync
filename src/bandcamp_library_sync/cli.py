@@ -22,12 +22,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_cmd = subparsers.add_parser("list", help="List discovered purchased releases")
     list_cmd.add_argument("--limit", type=int, help="Only print the first N releases")
+    add_network_tuning_args(list_cmd)
 
     sync_cmd = subparsers.add_parser("sync", help="Download missing releases")
     sync_cmd.add_argument("--output", required=True, help="Directory to sync into")
     sync_cmd.add_argument("--format", default="flac", help="Bandcamp download format")
     sync_cmd.add_argument("--limit", type=int, help="Only attempt the first N missing releases")
     sync_cmd.add_argument("--dry-run", action="store_true", help="Do not download anything")
+    add_network_tuning_args(sync_cmd)
 
     export_cmd = subparsers.add_parser(
         "export-manifest",
@@ -40,6 +42,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def add_network_tuning_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--request-delay",
+        type=float,
+        help="Minimum seconds between HTTP requests. Default is tuned conservatively.",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        help="Maximum retries for transient HTTP failures like 429 or 5xx.",
+    )
+    parser.add_argument(
+        "--retry-wait",
+        type=float,
+        help="Initial seconds to wait before retrying a transient failure.",
+    )
+    parser.add_argument(
+        "--retry-backoff",
+        type=float,
+        help="Exponential retry multiplier applied after each transient failure.",
+    )
 
 
 def load_config(config_dir: str | None) -> tuple[Any, dict[str, Any]]:
@@ -108,6 +133,7 @@ def infer_collection_url(url: str) -> str | None:
 
 def cmd_list(args: argparse.Namespace) -> int:
     paths, config = load_config(args.config_dir)
+    apply_network_tuning(args, config)
     client = BandcampClient(paths, config)
     releases = client.fetch_collection_releases()
     limit = args.limit or len(releases)
@@ -119,6 +145,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_sync(args: argparse.Namespace) -> int:
     paths, config = load_config(args.config_dir)
+    apply_network_tuning(args, config)
     client = BandcampClient(paths, config)
     results = sync_with_error_capture(
         client=client,
@@ -134,6 +161,13 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
     print(summarize_results(results))
     return 0 if not any((result.reason or "").startswith("error:") for result in results) else 1
+
+
+def apply_network_tuning(args: argparse.Namespace, config: dict[str, Any]) -> None:
+    for key in ("request_delay", "max_retries", "retry_wait", "retry_backoff"):
+        value = getattr(args, key, None)
+        if value is not None:
+            config[key] = value
 
 
 def cmd_export_manifest(args: argparse.Namespace) -> int:
